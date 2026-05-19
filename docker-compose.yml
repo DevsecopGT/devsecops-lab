@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+
+  app-flask:
+    build: ./app
+    container_name: app-flask
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: production
+      DB_HOST: db-postgresql
+      DB_PORT: 5432
+      DB_NAME: flaskdb
+      DB_USER: flaskuser
+      DB_PASSWORD: flaskpassword
+      REDIS_HOST: redis-redis
+      REDIS_PORT: 6379
+    depends_on:
+      - db-postgresql
+      - redis-redis
+    expose:
+      - "5000"
+    networks:
+      - backend
+
+  db-postgresql:
+    image: postgres:16
+    container_name: db-postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flaskdb
+      POSTGRES_USER: flaskuser
+      POSTGRES_PASSWORD: flaskpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+
+  redis-redis:
+    image: redis:7-alpine
+    container_name: redis-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  nginx-reverse-proxy:
+    image: nginx:stable-alpine
+    container_name: nginx-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      - app-flask
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend:
+    driver: bridge
