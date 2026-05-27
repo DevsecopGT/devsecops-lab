@@ -2,6 +2,7 @@ services:
 
   app-flask:
     build: ./app
+    image: ghcr.io/${GITHUB_REPOSITORY:-local/devsecops-lab}/app-flask:${IMAGE_TAG:-latest}
     container_name: app-flask
     restart: unless-stopped
     environment:
