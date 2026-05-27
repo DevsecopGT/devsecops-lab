@@ -1,7 +1,7 @@
 services:
-
   app-flask:
     build: ./app
+    image: ghcr.io/${GITHUB_REPOSITORY:-local/devsecops-lab}/app-flask:${IMAGE_TAG:-latest}
     container_name: app-flask
     restart: unless-stopped
     environment:
@@ -11,9 +11,12 @@ services:
       DB_USER: ${DBUSER_FLASK}
       DB_PASSWORD: ${DBPASS_FLASK}
       REDIS_HOST: redis-redis
+      BASE_URL: ${BASE_URL:-http://localhost}
     depends_on:
-      - db-postgresql
-      - redis-redis
+      db-postgresql:
+        condition: service_healthy
+      redis-redis:
+        condition: service_healthy
     expose:
       - "5000"
     networks:
@@ -33,6 +36,11 @@ services:
       - "5432:5432"
     networks:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DBUSER_FLASK} -d flaskdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis-redis:
     image: redis:7-alpine
@@ -44,6 +52,11 @@ services:
       - redis_data:/data
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   nginx-reverse-proxy:
     image: nginx:stable-alpine
@@ -54,7 +67,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,z
     networks:
       - backend
 
