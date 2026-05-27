@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Acortador de Links</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3e;
+      --accent:  #6c63ff;
+      --accent2: #a78bfa;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --green:   #22c55e;
+      --red:     #ef4444;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { color: var(--muted); margin-top: .4rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .field { margin-bottom: 1rem; }
+    label  { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+
+    input[type="url"],
+    input[type="text"] {
+      width: 100%;
+      padding: .7rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: .8rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+      margin-top: .5rem;
+    }
+    button[type="submit"]:hover { opacity: .85; }
+    button[type="submit"]:disabled { opacity: .5; cursor: not-allowed; }
+
+    #result {
+      margin-top: 1.5rem;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      display: none;
+    }
+    #result.success { background: #16231c; border: 1px solid #166534; }
+    #result.error   { background: #2a1515; border: 1px solid #7f1d1d; }
+
+    .result-label { font-size: .8rem; color: var(--muted); margin-bottom: .4rem; }
+    .result-row   { display: flex; align-items: center; gap: .6rem; }
+    .short-link   { color: var(--accent2); font-weight: 600; font-size: 1.05rem; word-break: break-all; flex: 1; }
+    .copy-btn {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      padding: .4rem .8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .85rem;
+      white-space: nowrap;
+      transition: background .2s;
+    }
+    .copy-btn:hover { background: var(--accent); }
+    .error-msg { color: var(--red); }
+
+    /* Links table */
+    .links-section { width: 100%; max-width: 560px; margin-top: 2.5rem; }
+    .links-section h2 { font-size: 1rem; color: var(--muted); margin-bottom: 1rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 500;
+      padding: .5rem .7rem;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: .6rem .7rem; border-bottom: 1px solid var(--border); }
+    td a { color: var(--accent2); text-decoration: none; }
+    td a:hover { text-decoration: underline; }
+    .original-td {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .clicks-badge {
+      background: var(--border);
+      border-radius: 99px;
+      padding: .15rem .5rem;
+      font-size: .8rem;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔗 LinkCut</h1>
+  <p>Acorta tus links en segundos</p>
+</header>
+
+<div class="card">
+  <div class="field">
+    <label for="url-input">URL original</label>
+    <input id="url-input" type="url" placeholder="https://ejemplo.com/ruta/muy/larga" />
+  </div>
+  <div class="field">
+    <label for="slug-input">Slug personalizado <span style="color:var(--muted)">(opcional)</span></label>
+    <input id="slug-input" type="text" placeholder="mi-link" maxlength="32" />
+  </div>
+  <button type="submit" id="shorten-btn">Acortar</button>
+
+  <div id="result">
+    <div class="result-label">Tu link acortado:</div>
+    <div class="result-row">
+      <a id="short-link" class="short-link" href="#" target="_blank"></a>
+      <button class="copy-btn" id="copy-btn">Copiar</button>
+    </div>
+  </div>
+</div>
+
+<div class="links-section">
+  <h2>Últimos links creados</h2>
+  <table id="links-table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Destino</th>
+        <th>Clicks</th>
+      </tr>
+    </thead>
+    <tbody id="links-body">
+      <tr><td colspan="3" style="color:var(--muted);text-align:center">Cargando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const btn      = document.getElementById('shorten-btn');
+  const result   = document.getElementById('result');
+  const shortLink= document.getElementById('short-link');
+  const copyBtn  = document.getElementById('copy-btn');
+  const linksBody= document.getElementById('links-body');
+
+  async function shorten() {
+    const url  = document.getElementById('url-input').value.trim();
+    const slug = document.getElementById('slug-input').value.trim();
+    if (!url) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Acortando...';
+    result.style.display = 'none';
+
+    try {
+      const res  = await fetch('/api/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, slug: slug || undefined }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        result.className = 'error';
+        result.innerHTML = `<span class="error-msg">${data.error}</span>`;
+      } else {
+        result.className = 'success';
+        shortLink.href = data.short_url;
+        shortLink.textContent = data.short_url;
+        result.innerHTML = `
+          <div class="result-label">Tu link acortado:</div>
+          <div class="result-row">
+            <a id="short-link" class="short-link" href="${data.short_url}" target="_blank">${data.short_url}</a>
+            <button class="copy-btn" id="copy-btn" onclick="copyLink('${data.short_url}')">Copiar</button>
+          </div>`;
+        loadLinks();
+      }
+    } catch {
+      result.className = 'error';
+      result.innerHTML = '<span class="error-msg">Error de conexión.</span>';
+    }
+
+    result.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Acortar';
+  }
+
+  function copyLink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const b = document.getElementById('copy-btn');
+      if (b) { b.textContent = '✓ Copiado'; setTimeout(() => b.textContent = 'Copiar', 2000); }
+    });
+  }
+
+  async function loadLinks() {
+    try {
+      const res  = await fetch('/api/links');
+      const data = await res.json();
+      if (!data.length) {
+        linksBody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center">Sin links aún</td></tr>';
+        return;
+      }
+      linksBody.innerHTML = data.map(r => `
+        <tr>
+          <td><a href="${r.short_url}" target="_blank">${r.code}</a></td>
+          <td class="original-td" title="${r.original}">${r.original}</td>
+          <td><span class="clicks-badge"> ${r.clicks}</span></td>
+        </tr>`).join('');
+    } catch {
+      linksBody.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">Error cargando links</td></tr>';
+    }
+  }
+
+  btn.addEventListener('click', shorten);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') shorten(); });
+  loadLinks();
+</script>
+</body>
+</html>
